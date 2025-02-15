@@ -1,0 +1,1 @@
+aqui iria la logica, o sea el script de cada pagina que hagamos que no sea la del index.html
