@@ -327,7 +327,7 @@ img{
     justify-content: space-between;
     align-items: flex-start; /* Alinear arriba para mejor estructura */
     padding: 40px 0;
-    background-color: white;
+    background-color: var(--bg-dark);
     border-top: 2px solid #f5f5f5;
 }
 
