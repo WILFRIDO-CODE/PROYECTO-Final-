@@ -29,7 +29,7 @@ function addToCart(e) {
     const platePrice = parseFloat(plate.querySelector('.plato--info p').textContent.replace('$', ''));
 
     const existingItem = cart.find(item => item.name === plateName);
-    
+
     if (existingItem) {
         existingItem.quantity++;
     } else {
@@ -39,7 +39,7 @@ function addToCart(e) {
             quantity: 1
         });
     }
-    
+
     updateCart();
     showCartNotification('¡Producto agregado!');
     toggleCart(true);
@@ -48,7 +48,7 @@ function addToCart(e) {
 // Update cart display
 function updateCart() {
     cartList.innerHTML = '';
-    
+
     cart.forEach(item => {
         const li = document.createElement('li');
         li.className = 'cart-item';
@@ -63,35 +63,34 @@ function updateCart() {
                 </div>
             </div>
         `;
-        
+
         const minusBtn = li.querySelector('.minus');
         const plusBtn = li.querySelector('.plus');
         const removeBtn = li.querySelector('.remove-btn');
-        
+
         minusBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             updateQuantity(item, -1);
         });
-        
+
         plusBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             updateQuantity(item, 1);
         });
-        
+
         removeBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             removeItem(item);
         });
-        
+
         cartList.appendChild(li);
     });
-    
+
     const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     totalElement.textContent = `Total: $${total.toFixed(2)}`;
-    
-    // Obtener el contenedor de PayPal
+
     const paypalContainer = document.getElementById('paypal-button-container');
-    
+
     if (cart.length === 0) {
         cartList.innerHTML = '<li class="empty-cart">El carrito está vacío</li>';
         if (paypalContainer) {
@@ -100,8 +99,7 @@ function updateCart() {
     } else {
         if (paypalContainer) {
             paypalContainer.style.display = 'block';
-            // Si el botón aún no está inicializado, inicializarlo
-            if (!paypalContainer.hasChildNodes()) {
+            if (!paypalContainer.hasChildNodes() && window.paypal) {
                 initializePayPalButton();
             }
         }
@@ -133,23 +131,27 @@ function clearCart(e) {
 
 // Show notification when item is added
 function showCartNotification(message, isSuccess = false) {
+    const existingNotifications = document.querySelectorAll('.cart-notification');
+    existingNotifications.forEach(notification => notification.remove());
+
     const notification = document.createElement('div');
     notification.className = `cart-notification ${isSuccess ? 'success' : ''}`;
     notification.textContent = message;
     document.body.appendChild(notification);
-    
+
     setTimeout(() => {
         notification.remove();
     }, 2000);
 }
 
 // Load PayPal SDK
+// Load PayPal SDK dynamically
 function loadPayPalScript() {
     return new Promise((resolve, reject) => {
         const script = document.createElement('script');
         script.src = "https://www.paypal.com/sdk/js?client-id=AZ7QZ7i8pNOt2GTKDH2PQMjn5hMS-OeZxR6Ucd8ldPuhyvRbOUr6sAztO9-4LSr1T81wKLeO-m0R8Ria&currency=USD";
         script.async = true;
-        
+
         script.onload = () => {
             console.log('PayPal SDK loaded successfully');
             resolve();
@@ -158,7 +160,7 @@ function loadPayPalScript() {
             console.error('Failed to load PayPal SDK:', error);
             reject(new Error('Failed to load PayPal SDK'));
         };
-        
+
         document.body.appendChild(script);
     });
 }
@@ -167,6 +169,7 @@ function loadPayPalScript() {
 function initializePayPalButton() {
     if (!window.paypal) {
         console.error('PayPal SDK not loaded');
+        showCartNotification('Error al cargar PayPal. Por favor, recargue la página.');
         return;
     }
 
@@ -176,8 +179,14 @@ function initializePayPalButton() {
         return;
     }
 
-    // Limpiar el contenedor antes de renderizar
-    paypalContainer.innerHTML = '';
+    paypalContainer.innerHTML = ''; // Clear the container
+
+    // Validate cart
+    if (!cart || cart.length === 0) {
+        console.error('Cart is empty');
+        showCartNotification('El carrito está vacío. Agregue productos antes de pagar.');
+        return;
+    }
 
     paypal.Buttons({
         style: {
@@ -189,16 +198,16 @@ function initializePayPalButton() {
 
         createOrder: function(data, actions) {
             const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            
+
             const orderData = {
                 purchase_units: [{
                     amount: {
                         currency_code: "USD",
-                        value: total.toFixed(2),
+                        value: total.toFixed(2), // Ensure two decimal places
                         breakdown: {
                             item_total: {
                                 currency_code: "USD",
-                                value: total.toFixed(2)
+                                value: total.toFixed(2) // Ensure two decimal places
                             }
                         }
                     },
@@ -206,9 +215,9 @@ function initializePayPalButton() {
                         name: item.name,
                         unit_amount: {
                             currency_code: "USD",
-                            value: item.price.toFixed(2)
+                            value: item.price.toFixed(2) // Ensure two decimal places
                         },
-                        quantity: item.quantity.toString()
+                        quantity: item.quantity.toString() // Ensure quantity is a string
                     }))
                 }]
             };
@@ -239,37 +248,45 @@ function initializePayPalButton() {
             console.error('PayPal Error:', err);
             showCartNotification('Error al procesar el pago. Por favor, intente nuevamente.');
         }
-    }).render('#paypal-button-container')
-    .catch(function(error) {
-        console.error('Error rendering PayPal buttons:', error);
-        showCartNotification('Error al cargar PayPal. Por favor, recargue la página.');
-    });
+    }).render('#paypal-button-container');
 }
 
 // Handle successful payment
 function handleSuccessfulPayment(details) {
     console.log('Processing successful payment:', details);
-    
+
     const orderData = {
         paypalOrderId: details.id,
         cartItems: cart,
         total: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
         status: details.status
     };
-    
+
     showCartNotification('¡Pago procesado con éxito! Gracias por su compra.', true);
-    
+
     clearCart();
     setTimeout(() => {
         toggleCart();
     }, 3000);
 }
 
+// Example helper functions (ensure these are defined in your code)
+
+
+// Load PayPal SDK and initialize the button
+loadPayPalScript()
+    .then(() => {
+        initializePayPalButton();
+    })
+    .catch((error) => {
+        console.error('Failed to load PayPal SDK:', error);
+        showCartNotification('Error al cargar PayPal. Por favor, recargue la página.');
+    });
+
 // Initialize cart functionality
 async function initializeCart() {
     cartContainer.style.display = 'none';
-    
-    // Agregar PayPal container al carrito si no existe
+
     let paypalContainer = document.getElementById('paypal-button-container');
     if (!paypalContainer) {
         paypalContainer = document.createElement('div');
@@ -277,23 +294,22 @@ async function initializeCart() {
         paypalContainer.style.display = 'none';
         cartContainer.appendChild(paypalContainer);
     }
-    
-    // Event listeners
+
     addButtons.forEach(button => {
         button.addEventListener('click', addToCart);
     });
-    
+
     clearCartButton.addEventListener('click', clearCart);
-    
+
     cartIcon.addEventListener('click', (e) => {
         e.stopPropagation();
         toggleCart();
     });
-    
+
     cartContainer.addEventListener('click', (e) => {
         e.stopPropagation();
     });
-    
+
     document.addEventListener('click', () => {
         if (isCartVisible) {
             toggleCart();
@@ -301,10 +317,8 @@ async function initializeCart() {
     });
 
     try {
-        // Cargar el script de PayPal
         await loadPayPalScript();
-        // Inicializar el botón de PayPal si hay items en el carrito
-        if (cart.length > 0) {
+        if (cart.length > 0 && window.paypal) {
             initializePayPalButton();
         }
     } catch (error) {
@@ -330,7 +344,7 @@ const styles = `
         overflow-y: auto;
         color: white;
     }
-    
+
     .carrito h2 {
         margin: 0 0 15px 0;
         color: white;
@@ -338,7 +352,7 @@ const styles = `
         border-bottom: 2px solid rgba(255, 255, 255, 0.1);
         padding-bottom: 10px;
     }
-    
+
     .cart-item {
         display: flex;
         justify-content: space-between;
@@ -348,31 +362,31 @@ const styles = `
         margin-bottom: 8px;
         color: white;
     }
-    
+
     .cart-item-name {
         flex: 1;
         font-weight: 500;
         margin-right: 10px;
     }
-    
+
     .cart-item-details {
         display: flex;
         align-items: center;
         gap: 10px;
     }
-    
+
     .cart-item-price {
         color: white;
         font-weight: bold;
         min-width: 80px;
         text-align: right;
     }
-    
+
     .cart-item-controls {
         display: flex;
         gap: 5px;
     }
-    
+
     .quantity-btn {
         padding: 4px 10px;
         border: 1px solid white;
@@ -383,12 +397,12 @@ const styles = `
         font-weight: bold;
         transition: all 0.3s ease;
     }
-    
+
     .quantity-btn:hover {
         background: white;
         color: rgba(15, 23, 43, 1);
     }
-    
+
     .remove-btn {
         padding: 4px 10px;
         border: 1px solid #ff4444;
@@ -399,19 +413,19 @@ const styles = `
         font-weight: bold;
         transition: all 0.3s ease;
     }
-    
+
     .remove-btn:hover {
         background: #ff4444;
         color: white;
     }
-    
+
     .empty-cart {
         text-align: center;
         padding: 20px;
         color: rgba(255, 255, 255, 0.7);
         font-style: italic;
     }
-    
+
     #total {
         margin-top: 15px;
         padding-top: 15px;
@@ -421,7 +435,7 @@ const styles = `
         font-size: 1.2em;
         text-align: right;
     }
-    
+
     #vaciar-carrito {
         width: 100%;
         padding: 12px;
@@ -434,11 +448,11 @@ const styles = `
         font-weight: bold;
         transition: background 0.3s ease;
     }
-    
+
     #vaciar-carrito:hover {
         background: #f0f0f0;
     }
-    
+
     #paypal-button-container {
         margin-top: 15px;
         width: 100%;
