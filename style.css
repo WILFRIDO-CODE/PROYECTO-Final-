@@ -115,7 +115,8 @@ img{
 }
 .swiper,
 .slider {
-    background-color: white !important; /* Asegura que el fondo sea blanco */
+    background-color: white !important;
+    max-width: 100%; /* Asegura que el fondo sea blanco */
 }
 
 
