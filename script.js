@@ -11,6 +11,9 @@ var swiper = new Swiper(".mySwiper", {
         prevEl: ".swiper-button-prev",
     },
 });
+document.querySelector('.hamburguesa').addEventListener('click', () => {
+    document.querySelector('.menu').classList.toggle('active');
+});
 
 // Filtro de categorías sin afectar Swiper
 document.addEventListener("DOMContentLoaded", function () {
