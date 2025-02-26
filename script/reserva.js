@@ -102,29 +102,25 @@ document.getElementById('reservaForm').addEventListener('submit', function(event
     `.trim();
 
     // Enviar correo al usuario
-    // Enviar correo al usuario
-emailjs.send('service_8je9f18', 'template_z9mjlon', {
-    to_name: nombre, // Nombre del usuario
-    to_email: email, // Correo del usuario
-    from_name: 'El Conuco', // Nombre del restaurante
-    message: mensajeUsuario,
-    phone: telefono,
-    reserva_id: idReserva
-}).then(
-    function(responseUsuario) {
-        console.log('Correo al usuario enviado con éxito:', responseUsuario.status, responseUsuario.text);
+    emailjs.send('service_8je9f18', 'template_z9mjlon', {
+        to_email: email,
+        from_name: nombre,
+        message: mensajeUsuario,
+        phone: telefono,
+        reserva_id: idReserva
+    }).then(
+        function(responseUsuario) {
+            console.log('Correo al usuario enviado con éxito:', responseUsuario.status, responseUsuario.text);
 
-        // Enviar correo al restaurante
-        const restauranteEmail = 'rancelcedeno24@gmail.com'; // Correo del restaurante
-        emailjs.send('service_8je9f18', 'template_z9mjlon', {
-            to_name: 'El Conuco', // Nombre del restaurante
-            to_email: restauranteEmail, // Correo del restaurante
-            from_name: nombre, // Nombre del cliente
-            message: mensajeRestaurante,
-            phone: telefono,
-            reserva_id: idReserva
-        }).then(
-            // Resto del código...
+            // Enviar correo al restaurante
+            const restauranteEmail = 'rancelcedeno24@gmail.com'; // Correo real del restaurante
+            emailjs.send('service_8je9f18', 'template_z9mjlon', {
+                to_email: restauranteEmail,
+                from_name: 'Sistema de Reservas El Conuco',
+                message: mensajeRestaurante,
+                phone: telefono,
+                reserva_id: idReserva
+            }).then(
                 function(responseRestaurante) {
                     console.log('Correo al restaurante enviado con éxito:', responseRestaurante.status, responseRestaurante.text);
                     mostrarMensaje('¡Reserva enviada con éxito! Te contactaremos pronto. Revisa tu correo para confirmar o cancelar, y hemos notificado al restaurante.', 'var(--primary-color)');
