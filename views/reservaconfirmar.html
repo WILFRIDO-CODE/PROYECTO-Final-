@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmar Reserva - El Conuco</title>
+    <link rel="stylesheet" href="../css/bootstrap.min.css">
+    <link rel="stylesheet" href="../style/reserva.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <script>
+        (function() {
+            emailjs.init("asyEB8aDuTlf8C8oK"); // Reemplaza con tu Public Key de EmailJS
+        })();
+    </script>
+</head>
+<body class="d-flex justify-content-center align-items-center min-vh-100">
+    <div class="container">
+        <div class="card p-4">
+            <h2 class="text-center mb-4">Confirmar Reserva</h2>
+            <p class="text-center mb-4">¿Estás seguro de que quieres confirmar la reserva de este usuario?</p>
+            <div id="mensajeConfirmacion" class="text-center"></div>
+            <div class="d-flex justify-content-center gap-3">
+                <button id="confirmarBtn" class="btn btn-success">Confirmar Reserva</button>
+                <button id="volverBtn" class="btn btn-secondary">Volver</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* Estilos para el cuerpo - Fondo vibrante y moderno */
+        body {
+            font-family: 'Roboto', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #ffeadb, #ffcc99); /* Gradiente cálido y vibrante, más intenso */
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            color: var(--text-gray);
+        }
+
+        /* Contenedor principal - Diseño futurista y elegante */
+        .container {
+            max-width: 500px;
+            width: 90%; /* Responsivo en móviles */
+            margin: 50px auto;
+            padding: 0; /* Sin padding adicional aquí, lo manejaremos en el card */
+        }
+
+        /* Card de confirmación - Diseño premium y "de otro mundo" */
+        .card {
+            padding: 30px; /* Más padding para un look espacioso */
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 245, 230, 0.95)); /* Gradiente blanco-crema para efecto vidrio más vibrante */
+            border-radius: 25px; /* Bordes más redondeados para un look premium */
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2), 0 10px 25px rgba(255, 165, 0, 0.4); /* Sombra profunda con toque naranja más intenso */
+            animation: float 4s ease-in-out infinite; /* Animación de flotación sutil */
+            position: relative;
+            overflow: hidden;
+            border: 2px solid rgba(255, 165, 0, 0.2); /* Borde naranja más vibrante */
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Título - Diseño impactante y moderno */
+        h2 {
+            font-size: 2.5rem; /* Más grande y espectacular */
+            font-weight: 900;
+            text-align: center;
+            color: var(--text-gray); /* Mantener gris oscuro para contraste */
+            margin-bottom: 25px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            text-shadow: 2px 2px 8px rgba(255, 165, 0, 0.4); /* Sombra naranja más vibrante */
+            animation: fadeIn 1.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Párrafo descriptivo - Diseño claro y elegante */
+        p {
+            font-size: 1.2rem;
+            text-align: center;
+            color: var(--text-gray); /* Mantener gris oscuro para contraste */
+            opacity: 0.9;
+            margin-bottom: 25px;
+            background: rgba(255, 165, 0, 0.1); /* Fondo sutil naranja para destacar */
+            padding: 10px 15px;
+            border-radius: 10px;
+            animation: slideUp 1.5s ease-in-out;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Mensaje de confirmación/cancelación - Diseño dinámico */
+        #mensajeConfirmacion {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--primary-color); /* Naranja vibrante para mensajes */
+            text-shadow: 1px 1px 5px rgba(255, 165, 0, 0.3); /* Sombra naranja más pronunciada */
+            animation: bounceIn 1.5s ease-in-out;
+        }
+
+        /* Botones - Diseño futurista y premium */
+        .btn {
+            padding: 14px 28px; /* Más padding para un look premium */
+            font-size: 1.2rem;
+            font-weight: 700;
+            border-radius: 15px; /* Bordes más redondeados */
+            transition: all 0.4s ease;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #c82333, #dc3545); /* Gradiente verde más oscuro y vibrante para confirmación */
+            color: var(--text-light);
+            border: none;
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.5); /* Sombra más intensa */
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(45deg, #c82333, #dc3545);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(40, 167, 69, 0.7); /* Sombra más intensa al hover */
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, #6c757d, #4b525a); /* Gradiente gris más oscuro y elegante para volver */
+            color: var(--text-light);
+            border: none;
+            box-shadow: 0 8px 25px rgba(108, 117, 125, 0.5); /* Sombra más intensa */
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(45deg, #4b525a, #6c757d);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(108, 117, 125, 0.7); /* Sombra más intensa al hover */
+        }
+
+        .btn:active {
+            transform: translateY(0);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Animación bounceIn para mensajes */
+        @keyframes bounceIn {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-12px); }
+            60% { transform: translateY(-6px); }
+        }
+
+        /* Responsividad para móviles - Diseño futurista y bello */
+        @media (max-width: 768px) {
+            .container {
+                width: 85%;
+                margin: 30px auto;
+            }
+            .card {
+                padding: 20px;
+            }
+            h2 {
+                font-size: 2rem;
+            }
+            p {
+                font-size: 1rem;
+                padding: 8px 12px;
+            }
+            #mensajeConfirmacion {
+                font-size: 1rem;
+            }
+            .btn {
+                padding: 12px 24px;
+                font-size: 1rem;
+            }
+        }
+    </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const idReserva = urlParams.get('id');
+            const email = urlParams.get('email');
+
+            if (!idReserva || !email) {
+                document.getElementById('mensajeConfirmacion').innerText = 'No se pudo procesar la confirmación. Verifica los parámetros.';
+                document.getElementById('mensajeConfirmacion').style.color = 'red';
+                document.getElementById('confirmarBtn').disabled = true;
+                return;
+            }
+
+            document.getElementById('confirmarBtn').addEventListener('click', () => {
+                const mensaje = `
+                    Confirmación de reserva en El Conuco:
+                    - ID de Reserva: ${idReserva}
+                    - Correo: ${email}
+                    - La reserva ha sido confirmada exitosamente.
+                `.trim();
+
+                emailjs.send('service_8je9f18', 'template_z9mjlon', {
+                    to_email: email,
+                    from_name: 'El Conuco',
+                    message: mensaje,
+                    phone: '', // No aplicable aquí
+                    reserva_id: idReserva
+                }).then(
+                    function(response) {
+                        console.log('Correo de confirmación enviado con éxito:', response.status, response.text);
+                        document.getElementById('mensajeConfirmacion').innerText = '¡Reserva confirmada con éxito! Te hemos notificado por correo.';
+                        document.getElementById('mensajeConfirmacion').style.color = 'var(--primary-color)';
+                        document.getElementById('confirmarBtn').disabled = true;
+                        document.getElementById('volverBtn').focus();
+                    },
+                    function(error) {
+                        console.error('Error al enviar el correo de confirmación:', error);
+                        document.getElementById('mensajeConfirmacion').innerText = 'Error al confirmar la reserva. Intenta de nuevo.';
+                        document.getElementById('mensajeConfirmacion').style.color = 'red';
+                    }
+                );
+            });
+
+            document.getElementById('volverBtn').addEventListener('click', () => {
+                window.location.href = '../index.html'; // Redirigir a la página principal
+            });
+        });
+    </script>
+</body>
+</html>
