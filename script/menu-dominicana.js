@@ -10,6 +10,10 @@ const cartIcon = document.querySelector('.carrito-icono');
 let cart = [];
 let isCartVisible = false;
 
+// Coordenadas aproximadas del centro de Santo Domingo (Latitud, Longitud)
+const SANTO_DOMINGO_CENTER = { lat: 18.4861, lng: -69.9312 }; // Centro de Santo Domingo
+const MAX_DISTANCE_KM = 50; // Radio máximo en kilómetros desde el centro de Santo Domingo
+
 // Toggle cart visibility
 function toggleCart(forceShow = false) {
     if (forceShow) {
@@ -20,16 +24,63 @@ function toggleCart(forceShow = false) {
     cartContainer.style.display = isCartVisible ? 'block' : 'none';
 }
 
+// Calcular distancia entre dos puntos en kilómetros (fórmula de Haversine)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Radio de la Tierra en kilómetros
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distancia en kilómetros
+}
+
+// Verificar si el usuario está en Santo Domingo
+function checkLocation(callback) {
+    if (!navigator.geolocation) {
+        showCartNotification('Geolocalización no soportada por tu navegador.');
+        callback(false);
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const userLat = position.coords.latitude;
+            const userLng = position.coords.longitude;
+            const distance = calculateDistance(
+                userLat, userLng,
+                SANTO_DOMINGO_CENTER.lat, SANTO_DOMINGO_CENTER.lng
+            );
+            const isInSantoDomingo = distance <= MAX_DISTANCE_KM;
+            callback(isInSantoDomingo);
+        },
+        (error) => {
+            console.error('Error al obtener la ubicación:', error);
+            showCartNotification('No se pudo verificar tu ubicación. Permite el acceso para continuar.');
+            callback(false);
+        },
+        { timeout: 10000, maximumAge: 0 } // Sin caché para ubicación fresca
+    );
+}
+
 // Add item to cart
 function addToCart(e) {
     e.stopPropagation();
     const button = e.target;
     const plate = button.closest('.plato');
     const plateName = plate.querySelector('h1').textContent;
-    const platePrice = parseFloat(plate.querySelector('.plato--info p').textContent.replace('$', ''));
+    const platePriceText = plate.querySelector('.plato--info p').textContent.replace('$', '');
+    const platePrice = parseFloat(platePriceText);
+
+    if (isNaN(platePrice)) {
+        console.error(`Precio inválido para ${plateName}: ${platePriceText}`);
+        showCartNotification('Error al agregar el producto. Contacta al soporte.');
+        return;
+    }
 
     const existingItem = cart.find(item => item.name === plateName);
-    
     if (existingItem) {
         existingItem.quantity++;
     } else {
@@ -41,7 +92,7 @@ function addToCart(e) {
     }
     
     updateCart();
-    showCartNotification('¡Producto agregado!');
+    showCartNotification('¡Producto agregado al carrito!', true);
     toggleCart(true);
 }
 
@@ -89,19 +140,14 @@ function updateCart() {
     const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     totalElement.textContent = `Total: $${total.toFixed(2)}`;
     
-    // Obtener el contenedor de PayPal
     const paypalContainer = document.getElementById('paypal-button-container');
-    
     if (cart.length === 0) {
         cartList.innerHTML = '<li class="empty-cart">El carrito está vacío</li>';
-        if (paypalContainer) {
-            paypalContainer.style.display = 'none';
-        }
+        if (paypalContainer) paypalContainer.style.display = 'none';
     } else {
         if (paypalContainer) {
             paypalContainer.style.display = 'block';
-            // Si el botón aún no está inicializado, inicializarlo
-            if (!paypalContainer.hasChildNodes()) {
+            if (!paypalContainer.hasChildNodes() && window.paypal) {
                 initializePayPalButton();
             }
         }
@@ -131,31 +177,50 @@ function clearCart(e) {
     updateCart();
 }
 
-// Show notification when item is added
+// Show notification with stacking behavior
+let notificationCount = 0;
 function showCartNotification(message, isSuccess = false) {
     const notification = document.createElement('div');
     notification.className = `cart-notification ${isSuccess ? 'success' : ''}`;
     notification.textContent = message;
+    notification.style.top = `${20 + (notificationCount * 60)}px`; // Apila notificaciones
     document.body.appendChild(notification);
     
+    notificationCount++;
+    
     setTimeout(() => {
-        notification.remove();
+        notification.style.opacity = '0';
+        setTimeout(() => {
+            notification.remove();
+            notificationCount = Math.max(0, notificationCount - 1);
+            const remainingNotifications = document.querySelectorAll('.cart-notification');
+            remainingNotifications.forEach((notif, index) => {
+                notif.style.top = `${20 + (index * 60)}px`;
+            });
+        }, 300);
     }, 2000);
 }
 
-// Load PayPal SDK
+// Load PayPal SDK with improved error handling
 function loadPayPalScript() {
     return new Promise((resolve, reject) => {
+        if (window.paypal) {
+            console.log('PayPal SDK ya está cargado');
+            resolve();
+            return;
+        }
+
         const script = document.createElement('script');
-        script.src = "https://www.paypal.com/sdk/js?client-id=AZ7QZ7i8pNOt2GTKDH2PQMjn5hMS-OeZxR6Ucd8ldPuhyvRbOUr6sAztO9-4LSr1T81wKLeO-m0R8Ria&currency=USD";
+        script.src = "https://www.paypal.com/sdk/js?client-id=AZ7QZ7i8pNOt2GTKDH2PQMjn5hMS-OeZxR6Ucd8ldPuhyvRbOUr6sAztO9-4LSr1T81wKLeO-m0R8Ria&currency=USD"; // Corregido "¤cy" a "&currency"
         script.async = true;
         
         script.onload = () => {
-            console.log('PayPal SDK loaded successfully');
+            console.log('PayPal SDK cargado con éxito');
             resolve();
         };
-        script.onerror = (error) => {
-            console.error('Failed to load PayPal SDK:', error);
+        script.onerror = () => {
+            console.error('Error al cargar el PayPal SDK');
+            showCartNotification('No se pudo cargar PayPal. Verifica tu conexión o recarga la página.');
             reject(new Error('Failed to load PayPal SDK'));
         };
         
@@ -163,21 +228,22 @@ function loadPayPalScript() {
     });
 }
 
-// Initialize PayPal button
+// Initialize PayPal button with geolocation check
 function initializePayPalButton() {
     if (!window.paypal) {
-        console.error('PayPal SDK not loaded');
+        console.error('PayPal SDK no está disponible');
+        showCartNotification('PayPal no está cargado. Recarga la página.');
         return;
     }
 
     const paypalContainer = document.getElementById('paypal-button-container');
     if (!paypalContainer) {
-        console.error('PayPal container not found');
+        console.error('Contenedor de PayPal no encontrado');
+        showCartNotification('Error interno: contenedor de PayPal no encontrado.');
         return;
     }
 
-    // Limpiar el contenedor antes de renderizar
-    paypalContainer.innerHTML = '';
+    paypalContainer.innerHTML = ''; // Limpiar antes de renderizar
 
     paypal.Buttons({
         style: {
@@ -188,88 +254,86 @@ function initializePayPalButton() {
         },
 
         createOrder: function(data, actions) {
-            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            
-            const orderData = {
-                purchase_units: [{
-                    amount: {
-                        currency_code: "USD",
-                        value: total.toFixed(2),
-                        breakdown: {
-                            item_total: {
-                                currency_code: "USD",
-                                value: total.toFixed(2)
-                            }
-                        }
-                    },
-                    items: cart.map(item => ({
-                        name: item.name,
-                        unit_amount: {
-                            currency_code: "USD",
-                            value: item.price.toFixed(2)
-                        },
-                        quantity: item.quantity.toString()
-                    }))
-                }]
-            };
+            return new Promise((resolve, reject) => {
+                checkLocation((isInSantoDomingo) => {
+                    if (!isInSantoDomingo) {
+                        showCartNotification('Solo aceptamos pedidos desde Santo Domingo.');
+                        reject(new Error('Ubicación no válida'));
+                        return;
+                    }
 
-            console.log('Creating PayPal order with data:', orderData);
-            return actions.order.create(orderData);
+                    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                    const orderData = {
+                        purchase_units: [{
+                            amount: {
+                                currency_code: "USD",
+                                value: total.toFixed(2),
+                                breakdown: {
+                                    item_total: {
+                                        currency_code: "USD",
+                                        value: total.toFixed(2)
+                                    }
+                                }
+                            },
+                            items: cart.map(item => ({
+                                name: item.name,
+                                unit_amount: {
+                                    currency_code: "USD",
+                                    value: item.price.toFixed(2)
+                                },
+                                quantity: item.quantity.toString()
+                            }))
+                        }]
+                    };
+                    resolve(actions.order.create(orderData));
+                });
+            });
         },
 
         onApprove: function(data, actions) {
-            console.log('Payment approved:', data);
             return actions.order.capture()
-                .then(function(details) {
-                    console.log('Payment completed successfully:', details);
-                    handleSuccessfulPayment(details);
-                })
-                .catch(function(error) {
-                    console.error('Error capturing order:', error);
-                    showCartNotification('Error al procesar el pago. Por favor, intente nuevamente.');
+                .then(details => handleSuccessfulPayment(details))
+                .catch(error => {
+                    console.error('Error al capturar el pedido:', error);
+                    showCartNotification('Error al procesar el pago. Intenta de nuevo.');
                 });
         },
 
         onCancel: function(data) {
-            console.log('Payment cancelled:', data);
             showCartNotification('El pago fue cancelado.');
         },
 
         onError: function(err) {
-            console.error('PayPal Error:', err);
-            showCartNotification('Error al procesar el pago. Por favor, intente nuevamente.');
+            console.error('Error de PayPal:', err);
+            showCartNotification('Error al procesar el pago.');
         }
     }).render('#paypal-button-container')
-    .catch(function(error) {
-        console.error('Error rendering PayPal buttons:', error);
-        showCartNotification('Error al cargar PayPal. Por favor, recargue la página.');
+    .catch(error => {
+        console.error('Error al renderizar botones de PayPal:', error);
+        showCartNotification('Error al inicializar PayPal. Recarga la página.');
     });
 }
 
 // Handle successful payment
 function handleSuccessfulPayment(details) {
-    console.log('Processing successful payment:', details);
-    
     const orderData = {
         paypalOrderId: details.id,
-        cartItems: cart,
+        cartItems: [...cart],
         total: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
         status: details.status
     };
     
-    showCartNotification('¡Pago procesado con éxito! Gracias por su compra.', true);
-    
+    showCartNotification('¡Pago procesado con éxito! Gracias por tu compra.', true);
     clearCart();
-    setTimeout(() => {
-        toggleCart();
-    }, 3000);
+    setTimeout(() => toggleCart(), 3000);
+
+    console.log('Datos del pedido completado:', orderData);
 }
 
 // Initialize cart functionality
 async function initializeCart() {
     cartContainer.style.display = 'none';
     
-    // Agregar PayPal container al carrito si no existe
     let paypalContainer = document.getElementById('paypal-button-container');
     if (!paypalContainer) {
         paypalContainer = document.createElement('div');
@@ -278,38 +342,26 @@ async function initializeCart() {
         cartContainer.appendChild(paypalContainer);
     }
     
-    // Event listeners
-    addButtons.forEach(button => {
-        button.addEventListener('click', addToCart);
-    });
-    
+    addButtons.forEach(button => button.addEventListener('click', addToCart));
     clearCartButton.addEventListener('click', clearCart);
-    
     cartIcon.addEventListener('click', (e) => {
         e.stopPropagation();
         toggleCart();
     });
     
-    cartContainer.addEventListener('click', (e) => {
-        e.stopPropagation();
-    });
-    
+    cartContainer.addEventListener('click', (e) => e.stopPropagation());
     document.addEventListener('click', () => {
-        if (isCartVisible) {
-            toggleCart();
-        }
+        if (isCartVisible) toggleCart();
     });
 
     try {
-        // Cargar el script de PayPal
         await loadPayPalScript();
-        // Inicializar el botón de PayPal si hay items en el carrito
-        if (cart.length > 0) {
+        if (cart.length > 0 && window.paypal) {
             initializePayPalButton();
         }
     } catch (error) {
-        console.error('Error loading PayPal:', error);
-        showCartNotification('Error al cargar PayPal. Por favor, recargue la página.');
+        console.error('Error al inicializar PayPal:', error);
+        showCartNotification('No se pudo cargar PayPal. Verifica tu conexión o recarga.');
     }
 }
 
@@ -463,30 +515,22 @@ const styles = `
 
     .cart-notification {
         position: fixed;
-        top: 20px;
         right: 20px;
         background: rgba(15, 23, 43, .9);
         color: white;
         padding: 12px 25px;
         border-radius: 8px;
         box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        animation: fadeInOut 2s ease-in-out;
         z-index: 1001;
+        transition: opacity 0.3s ease;
+        opacity: 1;
     }
 
     .cart-notification.success {
         background: #4CAF50;
     }
-
-    @keyframes fadeInOut {
-        0% { opacity: 0; transform: translateY(-20px); }
-        15% { opacity: 1; transform: translateY(0); }
-        85% { opacity: 1; transform: translateY(0); }
-        100% { opacity: 0; transform: translateY(-20px); }
-    }
 `;
 
-// Add styles to document
 const styleSheet = document.createElement('style');
 styleSheet.textContent = styles;
 document.head.appendChild(styleSheet);
