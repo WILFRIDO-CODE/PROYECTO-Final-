@@ -1,11 +1,34 @@
+// Configurar restricciones de fecha y hora al cargar la página
+document.addEventListener('DOMContentLoaded', function() {
+    const fechaInput = document.getElementById('fecha');
+    const horaInput = document.getElementById('hora');
+    
+    // Establecer fecha mínima como hoy
+    fechaInput.min = new Date().toISOString().split('T')[0];
+
+    // Ajustar hora mínima si es el día actual
+    fechaInput.addEventListener('change', function() {
+        const selectedDate = new Date(fechaInput.value);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (selectedDate.toDateString() === today.toDateString()) {
+            const now = new Date();
+            const minTime = now.toTimeString().slice(0, 5); // Ejemplo: "14:30"
+            horaInput.min = minTime;
+        } else {
+            horaInput.min = '00:00'; // Permitir cualquier hora para días futuros
+        }
+    });
+});
+
 document.getElementById('reservaForm').addEventListener('submit', function(event) {
     event.preventDefault();
 
     const nombre = document.getElementById('nombre').value.trim();
     const email = document.getElementById('email').value.trim();
     const telefono = document.getElementById('telefono').value.trim();
-    const fecha = document.getElementById('fecha').value; // Formato DD/MM/YYYY desde el input
-    const hora = document.getElementById('hora').value; // Formato HH:mm (e.g., 05:21 p.m.)
+    const fecha = document.getElementById('fecha').value; // YYYY-MM-DD
+    const hora = document.getElementById('hora').value; // HH:mm
     const personas = document.getElementById('personas').value;
 
     // Validación de campos vacíos
@@ -35,35 +58,26 @@ document.getElementById('reservaForm').addEventListener('submit', function(event
         return;
     }
 
-    // Convertir la fecha del input al formato adecuado para Date
-    const [day, month, year] = fecha.split('/'); // Dividir DD/MM/YYYY
-    const selectedDate = new Date(year, month - 1, day); // month - 1 porque Date usa 0-11 para meses
-    const today = new Date(); // Fecha y hora actuales del sistema
-    today.setHours(0, 0, 0, 0); // Resetear a medianoche para comparar solo fechas
-    selectedDate.setHours(0, 0, 0, 0); // Resetear a medianoche
-
     // Validación de la fecha
+    const selectedDate = new Date(fecha);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    selectedDate.setHours(0, 0, 0, 0);
+
     if (selectedDate < today) {
-        mostrarMensaje('No puedes reservar para un día anterior al actual. Solo se permiten reservas para hoy o días futuros.', 'red');
+        mostrarMensaje('No puedes reservar para una fecha pasada. Selecciona hoy o una fecha futura.', 'red');
         return;
     }
 
-    // Validación de la hora si es el mismo día
-    const now = new Date(); // Hora actual del sistema
+    // Validación de la hora si es el día actual
     if (selectedDate.toDateString() === today.toDateString()) {
-        const [hours, minutes] = hora.split(':').map(Number); // Extraer horas y minutos
-        const selectedTime = new Date(now); // Usar la fecha actual como base
-        selectedTime.setHours(hours, minutes, 0, 0); // Establecer la hora seleccionada
-
-        // Ajustar a formato de 24 horas si es PM (asumiendo que el input usa AM/PM)
-        if (hora.toLowerCase().includes('p.m.') && hours !== 12) {
-            selectedTime.setHours(hours + 12);
-        } else if (hora.toLowerCase().includes('a.m.') && hours === 12) {
-            selectedTime.setHours(0);
-        }
+        const [hours, minutes] = hora.split(':').map(Number);
+        const selectedTime = new Date(today);
+        selectedTime.setHours(hours, minutes, 0, 0);
+        const now = new Date();
 
         if (selectedTime <= now) {
-            mostrarMensaje('No puedes reservar para una hora pasada del día actual. Elige una hora futura.', 'red');
+            mostrarMensaje('No puedes reservar para una hora pasada hoy. Selecciona una hora futura.', 'red');
             return;
         }
     }
@@ -72,6 +86,10 @@ document.getElementById('reservaForm').addEventListener('submit', function(event
     if (!confirm('¿Confirmas tu reserva en El Conuco?')) {
         return;
     }
+
+    // Formatear fecha para mensajes (DD/MM/YYYY)
+    const [year, month, day] = fecha.split('-');
+    const fechaFormateada = `${day}/${month}/${year}`;
 
     // Generar ID de reserva y URLs
     const idReserva = Date.now().toString();
@@ -84,7 +102,7 @@ document.getElementById('reservaForm').addEventListener('submit', function(event
         - Nombre: ${nombre}
         - Correo: ${email}
         - Teléfono: ${telefono}
-        - Fecha: ${fecha}
+        - Fecha: ${fechaFormateada}
         - Hora: ${hora}
         - Personas: ${numPersonas}
         
@@ -102,7 +120,7 @@ document.getElementById('reservaForm').addEventListener('submit', function(event
         - Nombre: ${nombre}
         - Correo: ${email}
         - Teléfono: ${telefono}
-        - Fecha: ${fecha}
+        - Fecha: ${fechaFormateada}
         - Hora: ${hora}
         - Personas: ${numPersonas}
 
@@ -135,23 +153,21 @@ document.getElementById('reservaForm').addEventListener('submit', function(event
             }).then(
                 function(responseRestaurante) {
                     console.log('Correo al restaurante enviado con éxito:', responseRestaurante.status, responseRestaurante.text);
-                    mostrarMensaje('¡Reserva enviada con éxito! Te contactaremos pronto. Revisa tu correo para confirmar o cancelar, y hemos notificado al restaurante.', 'var(--primary-color)');
+                    mostrarMensaje('¡Reserva enviada con éxito! Revisa tu correo para confirmar o cancelar.', 'var(--primary-color)');
                     document.getElementById('reservaForm').reset();
                     setTimeout(() => {
                         document.getElementById('mensaje').textContent = '';
-                        const modal = bootstrap.Modal.getInstance(document.getElementById('reservaModal'));
-                        if (modal) modal.hide();
                     }, 5000);
                 },
                 function(errorRestaurante) {
                     console.error('Error al enviar el correo al restaurante:', errorRestaurante);
-                    mostrarMensaje('¡Reserva enviada con éxito al usuario, pero hubo un error al notificar al restaurante. Intenta de nuevo o contacta al soporte.', 'orange');
+                    mostrarMensaje('Reserva enviada al usuario, pero hubo un error al notificar al restaurante.', 'orange');
                 }
             );
         },
         function(errorUsuario) {
             console.error('Error al enviar el correo al usuario:', errorUsuario);
-            mostrarMensaje('Error al enviar la reserva al usuario. Intenta de nuevo.', 'red');
+            mostrarMensaje('Error al enviar la reserva. Intenta de nuevo.', 'red');
         }
     );
 });
@@ -159,10 +175,10 @@ document.getElementById('reservaForm').addEventListener('submit', function(event
 // Función para mostrar mensajes
 function mostrarMensaje(texto, color) {
     const mensaje = document.getElementById('mensaje');
-    if (mensaje) { // Verificar si el elemento existe
+    if (mensaje) {
         mensaje.textContent = texto;
         mensaje.style.color = color;
-        mensaje.style.animation = 'bounceIn 1.5s ease-in-out';
+        mensaje.style.animation = 'hologram 2s infinite';
     } else {
         console.error('Elemento con id "mensaje" no encontrado en el DOM.');
     }

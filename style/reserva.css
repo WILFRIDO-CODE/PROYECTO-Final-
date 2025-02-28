@@ -5,11 +5,12 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 100vh; /* Usar min-height para evitar problemas con contenido largo */
-    background: linear-gradient(135deg, #f5f5f5, #e0e0e0); /* Gradiente suave para un fondo moderno */
+    background: #0F172B; /* Gradiente suave para un fondo moderno */
     margin: 0;
     padding: 0;
     overflow-x: hidden; /* Evitar barras horizontales innecesarias */
     color: var(--text-gray);
+
 }
 
 /* Contenedor principal - Diseño futurista y elegante, más pequeño, con espacio en la esquina derecha */
@@ -18,7 +19,7 @@ body {
     width: 85%; /* Responsivo en móviles, ajustado para ser más pequeño */
     margin: 50px auto; /* Espaciado desde el borde con centrado */
     padding: 30px 40px 30px 30px; /* Aumentar padding derecho (40px) para espaciar del borde derecho */
-    background: var(--bg-darker); /* Fondo blanco para el contenedor */
+    background: whitesmoke; /* Fondo blanco para el contenedor */
     border-radius: 16px; /* Reducido un 20% (20px * 0.8) */
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(255, 165, 0, 0.16); /* Sombra ajustada proporcionalmente */
     animation: float 4s ease-in-out infinite; /* Animación de flotación sutil */
