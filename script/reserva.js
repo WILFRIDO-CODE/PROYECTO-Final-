@@ -1,12 +1,11 @@
 document.getElementById('reservaForm').addEventListener('submit', function(event) {
-    event.preventDefault(); // Prevenir el envío tradicional del formulario
+    event.preventDefault();
 
-    // Obtener y limpiar los valores del formulario
     const nombre = document.getElementById('nombre').value.trim();
     const email = document.getElementById('email').value.trim();
     const telefono = document.getElementById('telefono').value.trim();
-    const fecha = document.getElementById('fecha').value;
-    const hora = document.getElementById('hora').value;
+    const fecha = document.getElementById('fecha').value; // Formato DD/MM/YYYY desde el input
+    const hora = document.getElementById('hora').value; // Formato HH:mm (e.g., 05:21 p.m.)
     const personas = document.getElementById('personas').value;
 
     // Validación de campos vacíos
@@ -15,59 +14,71 @@ document.getElementById('reservaForm').addEventListener('submit', function(event
         return;
     }
 
-    // Validación de formato de correo (más robusta)
+    // Validación del correo electrónico
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
         mostrarMensaje('Por favor, ingresa un correo electrónico válido (ej. usuario@dominio.com).', 'red');
         return;
     }
 
-    // Validación de número de teléfono (10 dígitos, ajustable según región)
+    // Validación del teléfono
     const telefonoRegex = /^\d{10}$/;
     if (!telefonoRegex.test(telefono)) {
         mostrarMensaje('Por favor, ingresa un número de teléfono válido (10 dígitos, ej. 8091234567).', 'red');
         return;
     }
 
-    // Validación de número de personas (mínimo 1, máximo 20, por ejemplo)
+    // Validación del número de personas
     const numPersonas = parseInt(personas, 10);
     if (isNaN(numPersonas) || numPersonas < 1 || numPersonas > 20) {
         mostrarMensaje('El número de personas debe estar entre 1 y 20.', 'red');
         return;
     }
 
-    // Validación de fecha (solo permitir fecha actual o futuras)
-    const today = new Date('2025-02-25'); // Fecha actual: 25 de febrero de 2025
-    const selectedDate = new Date(fecha);
-    
+    // Convertir la fecha del input al formato adecuado para Date
+    const [day, month, year] = fecha.split('/'); // Dividir DD/MM/YYYY
+    const selectedDate = new Date(year, month - 1, day); // month - 1 porque Date usa 0-11 para meses
+    const today = new Date(); // Fecha y hora actuales del sistema
+    today.setHours(0, 0, 0, 0); // Resetear a medianoche para comparar solo fechas
+    selectedDate.setHours(0, 0, 0, 0); // Resetear a medianoche
+
+    // Validación de la fecha
     if (selectedDate < today) {
-        mostrarMensaje('No puedes reservar para un día anterior al actual (25 de febrero de 2025). Solo se permiten reservas para hoy o días futuros.', 'red');
+        mostrarMensaje('No puedes reservar para un día anterior al actual. Solo se permiten reservas para hoy o días futuros.', 'red');
         return;
     }
 
-    // Validación de hora (solo permitir horas futuras si es el día actual)
-    if (selectedDate.toDateString() === today.toDateString()) { // Si es el mismo día
-        const currentTime = new Date('2025-02-25T19:48:00-08:00'); // Hora actual: 7:48 PM PST (ajusta según zona horaria)
-        const [selectedHours, selectedMinutes] = hora.split(':').map(Number);
-        const selectedTime = new Date('2025-02-25T' + hora + ':00-08:00'); // Hora seleccionada en formato UTC
+    // Validación de la hora si es el mismo día
+    const now = new Date(); // Hora actual del sistema
+    if (selectedDate.toDateString() === today.toDateString()) {
+        const [hours, minutes] = hora.split(':').map(Number); // Extraer horas y minutos
+        const selectedTime = new Date(now); // Usar la fecha actual como base
+        selectedTime.setHours(hours, minutes, 0, 0); // Establecer la hora seleccionada
 
-        if (selectedTime <= currentTime) {
-            mostrarMensaje('No puedes reservar para una hora pasada del día actual (7:48 PM o antes del 25 de febrero de 2025). Elige una hora futura.', 'red');
+        // Ajustar a formato de 24 horas si es PM (asumiendo que el input usa AM/PM)
+        if (hora.toLowerCase().includes('p.m.') && hours !== 12) {
+            selectedTime.setHours(hours + 12);
+        } else if (hora.toLowerCase().includes('a.m.') && hours === 12) {
+            selectedTime.setHours(0);
+        }
+
+        if (selectedTime <= now) {
+            mostrarMensaje('No puedes reservar para una hora pasada del día actual. Elige una hora futura.', 'red');
             return;
         }
     }
 
-    // Confirmación de reserva
+    // Confirmación de la reserva
     if (!confirm('¿Confirmas tu reserva en El Conuco?')) {
         return;
     }
 
-    // Generar ID único y URLs de cancelación y confirmación
-    const idReserva = Date.now().toString(); // Usar toString() para evitar problemas con tipos
+    // Generar ID de reserva y URLs
+    const idReserva = Date.now().toString();
     const urlCancelacion = `${location.origin}/views/reservacancelar.html?id=${encodeURIComponent(idReserva)}&email=${encodeURIComponent(email)}`;
     const urlConfirmacion = `${location.origin}/views/reservaconfirmar.html?id=${encodeURIComponent(idReserva)}&email=${encodeURIComponent(email)}`;
 
-    // Construir los mensajes para el usuario y el restaurante
+    // Mensaje para el usuario
     const mensajeUsuario = `
         Nueva reserva en El Conuco:
         - Nombre: ${nombre}
@@ -84,6 +95,7 @@ document.getElementById('reservaForm').addEventListener('submit', function(event
         ${urlCancelacion}
     `.trim();
 
+    // Mensaje para el restaurante
     const mensajeRestaurante = `
         Nueva reserva recibida en El Conuco:
         - ID de Reserva: ${idReserva}
@@ -113,7 +125,7 @@ document.getElementById('reservaForm').addEventListener('submit', function(event
             console.log('Correo al usuario enviado con éxito:', responseUsuario.status, responseUsuario.text);
 
             // Enviar correo al restaurante
-            const restauranteEmail = 'rancelcedeno24@gmail.com'; // Correo real del restaurante
+            const restauranteEmail = 'rancelcedeno24@gmail.com';
             emailjs.send('service_8je9f18', 'template_z9mjlon', {
                 to_email: restauranteEmail,
                 from_name: 'Sistema de Reservas El Conuco',
@@ -124,11 +136,11 @@ document.getElementById('reservaForm').addEventListener('submit', function(event
                 function(responseRestaurante) {
                     console.log('Correo al restaurante enviado con éxito:', responseRestaurante.status, responseRestaurante.text);
                     mostrarMensaje('¡Reserva enviada con éxito! Te contactaremos pronto. Revisa tu correo para confirmar o cancelar, y hemos notificado al restaurante.', 'var(--primary-color)');
-                    document.getElementById('reservaForm').reset(); // Limpiar formulario
+                    document.getElementById('reservaForm').reset();
                     setTimeout(() => {
-                        document.getElementById('mensaje').textContent = ''; // Limpiar mensaje después de 5 segundos
+                        document.getElementById('mensaje').textContent = '';
                         const modal = bootstrap.Modal.getInstance(document.getElementById('reservaModal'));
-                        if (modal) modal.hide(); // Cerrar el modal automáticamente después de 5 segundos
+                        if (modal) modal.hide();
                     }, 5000);
                 },
                 function(errorRestaurante) {
@@ -144,10 +156,14 @@ document.getElementById('reservaForm').addEventListener('submit', function(event
     );
 });
 
-// Función auxiliar para mostrar mensajes de forma consistente
+// Función para mostrar mensajes
 function mostrarMensaje(texto, color) {
     const mensaje = document.getElementById('mensaje');
-    mensaje.textContent = texto;
-    mensaje.style.color = color;
-    mensaje.style.animation = 'bounceIn 1.5s ease-in-out'; // Usar la animación del CSS
+    if (mensaje) { // Verificar si el elemento existe
+        mensaje.textContent = texto;
+        mensaje.style.color = color;
+        mensaje.style.animation = 'bounceIn 1.5s ease-in-out';
+    } else {
+        console.error('Elemento con id "mensaje" no encontrado en el DOM.');
+    }
 }
